@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/blinklabs-io/dingo/database/models"
+	"github.com/blinklabs-io/dingo/database/types"
 )
 
 // setupTestDBWithMode creates and initializes a test SQLite database with the
@@ -163,4 +164,31 @@ func TestStorageMode_CaseNormalized(t *testing.T) {
 	store, err := NewWithOptions(WithStorageMode("API"))
 	require.NoError(t, err)
 	assert.Equal(t, "api", store.storageMode, "storage mode should be lowercased")
+}
+
+func TestNodeSettingsNilBeforeFirstSet(t *testing.T) {
+	store := setupTestDBWithMode(t, "core")
+
+	settings, err := store.GetNodeSettings()
+	require.NoError(t, err)
+	require.Nil(t, settings)
+}
+
+func TestNodeSettingsRemainImmutable(t *testing.T) {
+	store := setupTestDBWithMode(t, "core")
+
+	original := &types.NodeSettings{
+		StorageMode: "core",
+		Network:     "preview",
+	}
+	require.NoError(t, store.SetNodeSettings(original))
+
+	require.NoError(t, store.SetNodeSettings(&types.NodeSettings{
+		StorageMode: "api",
+		Network:     "mainnet",
+	}))
+
+	persisted, err := store.GetNodeSettings()
+	require.NoError(t, err)
+	require.Equal(t, original, persisted)
 }
